@@ -1,8 +1,10 @@
 require('dotenv').config();
+const bcrypt = require("bcrypt");
 const express = require("express");
 const { UserModel, TodoModel } = require("./db");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const { z }  = require("zod");
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const MONGO_URI = process.env.MONGO_URI;
@@ -11,9 +13,28 @@ const app = express();
 app.use(express.json());
 
 app.post("/signup", async function(req,res){
+    const requiredBody = z.object({
+        email: z.string().min(3).max(100).email(),
+        name: z.string().min(3).max(50),
+        password: z.string().min(3).max(30),
+    })
+    // const parsedData = requiredBody.parse(req.body);
+    const parsedDataWithSuccess = requiredBody.safeParse(req.body);
+
+    if(!parsedDataWithSuccess.success){
+        res.json({
+            message: "Incorrect format",
+            error:  parsedDataWithSuccess.error
+        })
+        return
+    }
+
     const email = req.body.email;
     const password = req.body.password;
     const name = req.body.name;
+
+    const hashedPassword = await bcrypt.hash(password, 5);
+    console.log(hashedPassword);
 
     await UserModel.create({
         email: email,
@@ -33,17 +54,25 @@ app.post("/signin", async function(req,res){
 
     const user = await UserModel.findOne({
         email: email,
-        password: password
-    })
+    });
 
-    console.log(user);
+    if(!response){
+        res.status(403).json({
+            message: "User does not exist in our db"
+        })
+        return
+    }
 
-    if (user) {
+    const passwordMatch = await bcrypt.compare(password, response.password);
+
+
+    if (passwordMatch) {
         const token = jwt.sign({
-            id: user._id.toString()
+            id: response._id.toString()
         }, JWT_SECRET);
+
         res.json({
-            token: token    
+             token    
         });
     } else {
         res.status(403).json({
