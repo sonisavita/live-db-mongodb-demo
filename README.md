@@ -9,6 +9,7 @@ The project includes user authentication (Sign Up & Sign In) and CRUD operations
 
 -  **User Authentication**
   - Secure sign-up and login using **JWT (JSON Web Token)**.
+  - bcrypt (for password encryption)
   
 -  **Todo Management**
   - Create, Read, Update, and Delete todos.
